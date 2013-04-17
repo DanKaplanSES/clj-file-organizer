@@ -33,9 +33,10 @@
       (config! text :text (.trim (str modifier " " key-text))))))
     
 
-(def shortcut-text (text 
-                     :editable? false 
-                     :listen [:key-pressed #(shortcut-listener (.getSource %) %)]))
+(defn make-shortcut-text []
+  (text 
+    :editable? false 
+    :listen [:key-pressed #(shortcut-listener (.getSource %) %)]))
 
 (def f (frame :title "File Organizer"))
 
@@ -52,11 +53,11 @@
 (defn popup-shortcut-dialog [destination-button shortcut-label]
   (let [d (custom-dialog :title "Choose a Shortcut" :modal? true :parent f)
         fc (doto (file-chooser) (.setControlButtonsAreShown false))
-        st shortcut-text
+        st (make-shortcut-text)
         shortcut-panel (horizontal-panel :items ["Shortcut:" st])
         error-label (label :foreground :red)
         frame-buttons (horizontal-panel :items [(button :text "OK"
-                                                        :listen [:action (fn [e] (shortcut-ok-button-action d fc shortcut-label shortcut-text destination-button error-label))]) 
+                                                        :listen [:action (fn [e] (shortcut-ok-button-action d fc shortcut-label st destination-button error-label))]) 
                                                 (button :text "Cancel"
                                                         :listen [:action (fn [e] (dispose! d))])])]    
     (config! d :content (vertical-panel :items [fc shortcut-panel frame-buttons error-label]))    

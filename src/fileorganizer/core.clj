@@ -67,15 +67,27 @@
     (listen destination-button :action (fn [e] (popup-shortcut-dialog destination-button shortcut-label)))
     destination-button))                                       
 
-(def shortcut-label (label "<Unset>"))
+(def shortcut-label1 (label "<Unset>"))
+(def shortcut-label2 (label "<Unset>"))
+(def shortcut-label3 (label "<Unset>"))
+(def shortcut-label4 (label "<Unset>"))
+(def shortcut-label5 (label "<Unset>"))
 
 (def shortcuts (grid-panel :columns 1                               
                            :items ["Shortcut"
-                                   shortcut-label]))
+                                   shortcut-label1
+                                   shortcut-label2
+                                   shortcut-label3
+                                   shortcut-label4
+                                   shortcut-label5]))
 
 (def destinations (grid-panel :columns 1 
                               :items ["Destination"
-                                      (destination shortcut-label)]))
+                                      (destination shortcut-label1)
+                                      (destination shortcut-label2)
+                                      (destination shortcut-label3)
+                                      (destination shortcut-label4)
+                                      (destination shortcut-label5)]))
 
 
 

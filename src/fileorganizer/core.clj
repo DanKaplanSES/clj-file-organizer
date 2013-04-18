@@ -8,6 +8,8 @@
 
 (native!)
 
+(def shortcut-destination-map (atom {}))
+
 (defn file-chooser []
   (JFileChooser.))
 
@@ -16,11 +18,13 @@
 
 (def fc (doto (file-chooser)
           (.setControlButtonsAreShown false)
-          (.setMultiSelectionEnabled true)
+          (.setMultiSelectionEnabled true)          
           (listen :action (fn [e] (open-file (.getSelectedFile fc))))))
 
 (def open-button (button :text "Open"))
-(listen open-button :action (fn [e] (open-file (.getSelectedFile fc))))
+(listen open-button :action (fn [e] (when-let [f (.getSelectedFile fc)]
+                                      (when (.isFile f)
+                                        (open-file (.getSelectedFile fc))))))
 (def delete-button (button :text "Delete"))
 (listen delete-button :action (fn [e] (alert (.getSelectedFile fc))))
 
@@ -43,32 +47,37 @@
 
 (def f (frame :title "File Organizer"))
 
-(defn shortcut-ok-button-action [dialog fc shortcut-label shortcut-text destination-button error-label]
-  (let [selected-file (.getSelectedFile fc)
+(defn shortcut-ok-button-action [dialog fc previous-shortcut-destination-map shortcut-label shortcut-text destination-button error-label]
+  (let [selected-file (.getSelectedFile fc)        
         shortcut-string (config shortcut-text :text)]
-    (if (and selected-file shortcut-string)
-      (do
-        (config! shortcut-label :text shortcut-string)
-        (config! destination-button :text (.getAbsolutePath selected-file))
-        (dispose! dialog))      
-      (config! error-label :text "You must choose a file AND pick a shortcut"))))
+    (cond
+      (not selected-file) (config! error-label :text "You must choose a directory")
+      (empty? shortcut-string) (config! error-label :text "You must choose a shortcut")
+      (get previous-shortcut-destination-map shortcut-string) (config! error-label :text (str "This shortcut is already bound to " (.getAbsolutePath selected-file)))
+      :else (do              
+              (swap! shortcut-destination-map assoc shortcut-string (.getAbsolutePath selected-file))  
+              (config! shortcut-label :text shortcut-string)
+              (config! destination-button :text (.getAbsolutePath selected-file))
+              (dispose! dialog)))))
 
-(defn popup-shortcut-dialog [destination-button shortcut-label]
+(defn destination-shortcut-dialog [destination-button shortcut-label]
   (let [d (custom-dialog :title "Choose a Shortcut" :modal? true :parent f)
-        fc (doto (file-chooser) (.setControlButtonsAreShown false))
+        fc (doto (file-chooser) (.setControlButtonsAreShown false) (config! :selection-mode :dirs-only))
         st (make-shortcut-text)
         shortcut-panel (horizontal-panel :items ["Shortcut:" st])
         error-label (label :foreground :red)
+        shortcut-text (if (= (config shortcut-label :text) "<Unset>") nil (config shortcut-label :text))
         frame-buttons (horizontal-panel :items [(button :text "OK"
-                                                        :listen [:action (fn [e] (shortcut-ok-button-action d fc shortcut-label st destination-button error-label))]) 
+                                                        :listen [:action (fn [e] (shortcut-ok-button-action d fc (dissoc @shortcut-destination-map shortcut-text) shortcut-label st destination-button error-label))]) 
                                                 (button :text "Cancel"
-                                                        :listen [:action (fn [e] (dispose! d))])])]    
+                                                        :listen [:action (fn [e] (dispose! d))])])]
+    
     (config! d :content (vertical-panel :items [fc shortcut-panel frame-buttons error-label]))    
     (-> d pack! show!)))	
 
 (defn destination [shortcut-label] 
   (let [destination-button (button :text "<Unset>")]                                          
-    (listen destination-button :action (fn [e] (popup-shortcut-dialog destination-button shortcut-label)))
+    (listen destination-button :action (fn [e] (destination-shortcut-dialog destination-button shortcut-label)))
     destination-button))                                       
 
 (def shortcut-label1 (label "<Unset>"))

@@ -3,6 +3,7 @@
   (:require [seesaw.chooser :refer :all])
   (:import [javax.swing JFileChooser])
   (:import [java.awt.event KeyEvent])    
+  (:import [java.awt Desktop])
   )
 
 (native!)
@@ -10,14 +11,16 @@
 (defn file-chooser []
   (JFileChooser.))
 
+(defn open-file [f]
+  (.open (Desktop/getDesktop) f))
+
 (def fc (doto (file-chooser)
           (.setControlButtonsAreShown false)
-          (.setMultiSelectionEnabled true)))
-
-
+          (.setMultiSelectionEnabled true)
+          (listen :action (fn [e] (open-file (.getSelectedFile fc))))))
 
 (def open-button (button :text "Open"))
-(listen open-button :action (fn [e] (alert (.getSelectedFile fc))))
+(listen open-button :action (fn [e] (open-file (.getSelectedFile fc))))
 (def delete-button (button :text "Delete"))
 (listen delete-button :action (fn [e] (alert (.getSelectedFile fc))))
 

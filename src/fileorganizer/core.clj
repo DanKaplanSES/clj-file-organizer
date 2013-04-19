@@ -83,27 +83,15 @@
     (listen destination-button :action (fn [e] (destination-shortcut-dialog destination-button shortcut-label)))
     destination-button))                                       
 
-(def shortcut-label1 (label "<Unset>"))
-(def shortcut-label2 (label "<Unset>"))
-(def shortcut-label3 (label "<Unset>"))
-(def shortcut-label4 (label "<Unset>"))
-(def shortcut-label5 (label "<Unset>"))
+(def num-of-shortcuts 7)
 
-(def shortcuts (grid-panel :columns 1                               
-                           :items ["Shortcut"
-                                   shortcut-label1
-                                   shortcut-label2
-                                   shortcut-label3
-                                   shortcut-label4
-                                   shortcut-label5]))
+(def shortcut-items (map (fn [_] (label "<Unset>")) (range num-of-shortcuts)))
 
-(def destinations (grid-panel :columns 1 
-                              :items ["Destination"
-                                      (destination shortcut-label1)
-                                      (destination shortcut-label2)
-                                      (destination shortcut-label3)
-                                      (destination shortcut-label4)
-                                      (destination shortcut-label5)]))
+(def shortcuts (grid-panel :columns 1 :items (conj shortcut-items "Shortcuts")))
+
+(def destination-items (map (fn [x] (destination (nth shortcut-items x))) (range num-of-shortcuts)))
+
+(def destinations (grid-panel :columns 1 :items (conj destination-items "Destinations")))
 
 
 

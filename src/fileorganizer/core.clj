@@ -3,7 +3,7 @@
   (:require [seesaw.chooser :refer :all])
   (:import [javax.swing JFileChooser])
   (:import [java.awt.event KeyEvent])    
-  (:import [java.awt Desktop])
+  (:import [java.awt Desktop Component])   
   )
 
 (native!)
@@ -39,6 +39,8 @@
     (when-not modifier-pressed
       (config! text :text (.trim (str modifier " " key-text))))))
     
+(defn left-align [c]
+  (doto c (.setAlignmentX Component/LEFT_ALIGNMENT)))
 
 (defn make-shortcut-text []
   (text 
@@ -64,15 +66,16 @@
   (let [d (custom-dialog :title "Choose a Shortcut" :modal? true :parent f)
         fc (doto (file-chooser) (.setControlButtonsAreShown false) (config! :selection-mode :dirs-only))
         st (make-shortcut-text)
-        shortcut-panel (horizontal-panel :items ["Shortcut:" st])
+        shortcut-panel (horizontal-panel :items ["Shortcut:" st]) 
         error-label (label :foreground :red)
         shortcut-text (if (= (config shortcut-label :text) "<Unset>") nil (config shortcut-label :text))
         frame-buttons (horizontal-panel :items [(button :text "OK"
                                                         :listen [:action (fn [e] (shortcut-ok-button-action d fc (dissoc @shortcut-destination-map shortcut-text) shortcut-label st destination-button error-label))]) 
                                                 (button :text "Cancel"
-                                                        :listen [:action (fn [e] (dispose! d))])])]
+                                                        :listen [:action (fn [e] (dispose! d))])])
+        left-aligned-components (map left-align (list fc shortcut-panel frame-buttons error-label))]
     
-    (config! d :content (vertical-panel :items [fc shortcut-panel frame-buttons error-label]))    
+    (config! d :content (vertical-panel :items left-aligned-components))
     (-> d pack! show!)))	
 
 (defn destination [shortcut-label] 
@@ -117,3 +120,6 @@
                                             destination-shortcuts]))
 
 (-> f pack! show!)
+
+
+; (-> (frame :content (vertical-panel :items [(file-chooser) (label :text "Hi")])) pack! show!)

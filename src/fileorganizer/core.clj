@@ -9,7 +9,8 @@
 
 (native!)
 
-(def shortcut-destination-map (atom {"Delete" "Reserved"}))
+(def shortcut-destination-map (atom {"Delete" "\"Reserved\""
+                                     "Ctrl Z" "\"Reserved\""}))
 
 (def last-shortcut-keystroke (atom nil))
 
@@ -25,16 +26,23 @@
                                     (open-file (.getSelectedFile fc)))))
           ))
 
-(defn delete-file-action []
-  (when-let [selected-file (.getSelectedFile fc)]
-    (println "I would delete " selected-file)))
 
 (def open-button (button :text "Open"))
 (listen open-button :action (fn [e] (when-let [f (.getSelectedFile fc)]
                                       (when (.isFile f)
                                         (open-file (.getSelectedFile fc))))))
+
 (def delete-button (button :text "Delete"))
+(defn delete-file-action []
+  (when-let [selected-file (.getSelectedFile fc)]
+    (println "I would delete " selected-file)))
 (listen delete-button :action (fn [e] (delete-file-action)))
+
+(defn undo-action []
+  (println "UNDOING"))
+(def undo-button (button :text "Undo"))
+(listen undo-button :action (fn [e] (undo-action)))
+
 
 (defn shortcut-listener [text e]
   (let [modifier (KeyEvent/getKeyModifiersText (.getModifiers e))        
@@ -56,6 +64,7 @@
 (def f (frame :title "File Organizer"))
 
 (map-key f "DELETE" (fn [e] (delete-file-action)) :scope :global)
+(map-key f "ctrl Z" (fn [e] (undo-action)) :scope :global)
 
 (defn move-file-action [destination]
   {:pre [destination]}
@@ -117,6 +126,7 @@
 
 (config! f :content (vertical-panel :items [fc                                            
                                             (horizontal-panel :items [open-button delete-button])
+                                            undo-button
                                             (separator)                                            
                                             destination-shortcuts]))
 

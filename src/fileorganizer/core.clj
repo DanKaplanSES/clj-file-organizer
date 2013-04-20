@@ -25,12 +25,16 @@
                                     (open-file (.getSelectedFile fc)))))
           ))
 
+(defn delete-file-action []
+  (when-let [selected-file (.getSelectedFile fc)]
+    (println "I would delete " selected-file)))
+
 (def open-button (button :text "Open"))
 (listen open-button :action (fn [e] (when-let [f (.getSelectedFile fc)]
                                       (when (.isFile f)
                                         (open-file (.getSelectedFile fc))))))
 (def delete-button (button :text "Delete"))
-(listen delete-button :action (fn [e] (alert (.getSelectedFile fc))))
+(listen delete-button :action (fn [e] (delete-file-action)))
 
 (defn shortcut-listener [text e]
   (let [modifier (KeyEvent/getKeyModifiersText (.getModifiers e))        
@@ -50,6 +54,8 @@
     :listen [:key-pressed #(shortcut-listener (.getSource %) %)]))
 
 (def f (frame :title "File Organizer"))
+
+(map-key f "DELETE" (fn [e] (delete-file-action)) :scope :global)
 
 (defn move-file-action [destination]
   {:pre [destination]}

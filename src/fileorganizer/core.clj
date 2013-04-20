@@ -1,6 +1,7 @@
 (ns fileorganizer.core
   (:require [seesaw.core :refer :all])
   (:require [seesaw.chooser :refer :all])
+  (:require [seesaw.keymap :refer [map-key]])
   (:import [javax.swing JFileChooser])
   (:import [java.awt.event KeyEvent])    
   (:import [java.awt Desktop Component])   
@@ -10,8 +11,7 @@
 
 (def shortcut-destination-map (atom {}))
 
-(defn file-chooser []
-  (JFileChooser.))
+(defn file-chooser [] (JFileChooser.))    
 
 (defn open-file [f]
   (.open (Desktop/getDesktop) f))
@@ -19,7 +19,9 @@
 (def fc (doto (file-chooser)
           (.setControlButtonsAreShown false)
           (.setMultiSelectionEnabled true)          
-          (listen :action (fn [e] (open-file (.getSelectedFile fc))))))
+          (listen :action (fn [e] (when (= (.getActionCommand e) "ApproveSelection") 
+                                    (open-file (.getSelectedFile fc)))))
+          ))
 
 (def open-button (button :text "Open"))
 (listen open-button :action (fn [e] (when-let [f (.getSelectedFile fc)]
@@ -30,9 +32,6 @@
 
 (defn shortcut-listener [text e]
   (let [modifier (KeyEvent/getKeyModifiersText (.getModifiers e))        
-;        ctrl (.isControlDown e)
-;        alt (.isAltDown e)
-;        shift (.isShiftDown e)
         code (.getKeyCode e)
         key-text (KeyEvent/getKeyText code)
         modifier-pressed (some identity (map #(= code %) [KeyEvent/VK_CONTROL KeyEvent/VK_ALT KeyEvent/VK_SHIFT]))]
@@ -47,7 +46,7 @@
     :editable? false 
     :listen [:key-pressed #(shortcut-listener (.getSource %) %)]))
 
-(def f (frame :title "File Organizer"))
+(def f (frame :title "File Organizer"))         
 
 (defn shortcut-ok-button-action [dialog fc previous-shortcut-destination-map shortcut-label shortcut-text destination-button error-label]
   (let [selected-file (.getSelectedFile fc)        
@@ -93,14 +92,11 @@
 
 (def destinations (grid-panel :columns 1 :items (conj destination-items "Destinations")))
 
-
-
 (def destination-shortcuts (horizontal-panel :items 
                                              [(left-right-split 
                                                 destinations 
                                                 shortcuts 
                                                 :divider-location 2/3)]))
-
 
 (config! f :content (vertical-panel :items [fc                                            
                                             (horizontal-panel :items [open-button delete-button])

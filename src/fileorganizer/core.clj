@@ -131,6 +131,3 @@
                                             destination-shortcuts]))
 
 (-> f pack! show!)
-
-
-; (-> (frame :content (vertical-panel :items [(file-chooser) (label :text "Hi")])) pack! show!)

@@ -2,14 +2,16 @@
   (:require [seesaw.core :refer :all])
   (:require [seesaw.chooser :refer :all])
   (:require [seesaw.keymap :refer [map-key]])
-  (:import [javax.swing JFileChooser])
+  (:import [javax.swing JFileChooser KeyStroke])
   (:import [java.awt.event KeyEvent])    
   (:import [java.awt Desktop Component])   
   )
 
 (native!)
 
-(def shortcut-destination-map (atom {}))
+(def shortcut-destination-map (atom {"Delete" "Reserved"}))
+
+(def last-shortcut-keystroke (atom nil))
 
 (defn file-chooser [] (JFileChooser.))    
 
@@ -36,6 +38,7 @@
         key-text (KeyEvent/getKeyText code)
         modifier-pressed (some identity (map #(= code %) [KeyEvent/VK_CONTROL KeyEvent/VK_ALT KeyEvent/VK_SHIFT]))]
     (when-not modifier-pressed
+      (reset! last-shortcut-keystroke (KeyStroke/getKeyStrokeForEvent e))
       (config! text :text (.trim (str modifier " " key-text))))))
     
 (defn left-align [c]
@@ -46,20 +49,28 @@
     :editable? false 
     :listen [:key-pressed #(shortcut-listener (.getSource %) %)]))
 
-(def f (frame :title "File Organizer"))         
+(def f (frame :title "File Organizer"))
+
+(defn move-file-action [destination]
+  {:pre [destination]}
+  (when-let [selected-file (.getSelectedFile fc)]
+    (println "I would move " selected-file " to " destination )))
 
 (defn shortcut-ok-button-action [dialog fc previous-shortcut-destination-map shortcut-label shortcut-text destination-button error-label]
+  {:pre [@last-shortcut-keystroke]}
   (let [selected-file (.getSelectedFile fc)        
         shortcut-string (config shortcut-text :text)]
     (cond
       (not selected-file) (config! error-label :text "You must choose a directory")
       (empty? shortcut-string) (config! error-label :text "You must choose a shortcut")
-      (get previous-shortcut-destination-map shortcut-string) (config! error-label :text (str "This shortcut is already bound to " (.getAbsolutePath selected-file)))
+      (get previous-shortcut-destination-map shortcut-string) (config! error-label :text (str "This shortcut is already bound to " (get previous-shortcut-destination-map shortcut-string)))
       :else (do              
               (swap! shortcut-destination-map assoc shortcut-string (.getAbsolutePath selected-file))  
               (config! shortcut-label :text shortcut-string)
               (config! destination-button :text (.getAbsolutePath selected-file))
-              (dispose! dialog)))))
+              (dispose! dialog)
+              (map-key f @last-shortcut-keystroke (fn [e] (move-file-action selected-file)) :scope :global)
+              (reset! last-shortcut-keystroke nil)))))
 
 (defn destination-shortcut-dialog [destination-button shortcut-label]
   (let [d (custom-dialog :title "Choose a Shortcut" :modal? true :parent f)

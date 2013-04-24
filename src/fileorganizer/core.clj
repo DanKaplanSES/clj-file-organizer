@@ -21,13 +21,21 @@
 (defn open-file [f]
   (.open (Desktop/getDesktop) f))
 
+(defn my-file-filter [f] 
+  (let [input (.getAbsolutePath f)
+        sources (reduce conj #{} (map #(.getAbsolutePath (nth % 1)) @actions))]
+    (not (sources input))))
+
 (def fc (doto (file-chooser)
+          (.setAcceptAllFileFilterUsed false)
+          (config! :filters [(file-filter "My Files" my-file-filter)])          
           (.setControlButtonsAreShown false)
           (.setMultiSelectionEnabled true)          
           (listen :action (fn [e] (when (= (.getActionCommand e) "ApproveSelection") 
                                     (open-file (.getSelectedFile fc)))))
           ))
 
+(defn refresh-fc [] (.rescanCurrentDirectory fc))
 
 (def open-button (button :text "Open"))
 
@@ -39,19 +47,20 @@
 
 (defn delete-file-action []
   (when-let [selected-file (.getSelectedFile fc)]
-    (swap! actions conj (list :delete selected-file))))
+    (swap! actions conj (list :delete selected-file))
+    (refresh-fc)))
     
 
 (listen delete-button :action (fn [e] (delete-file-action)))
 
 (defn undo-action []
   (when-not (empty? @actions) 
-    (swap! actions pop)))    
+    (swap! actions pop)
+    (refresh-fc)))    
 
 (def undo-button (button :text "Undo"))
 
 (listen undo-button :action (fn [e] (undo-action)))
-
 
 (defn shortcut-listener [text e]
   (let [modifier (KeyEvent/getKeyModifiersText (.getModifiers e))        
@@ -78,7 +87,8 @@
 (defn move-file-action [destination]
   {:pre [destination]}
   (when-let [selected-file (.getSelectedFile fc)]
-    (swap! actions conj (list :move selected-file destination))))    
+    (swap! actions conj (list :move selected-file destination))
+    (refresh-fc)))    
 
 (defn shortcut-ok-button-action [dialog fc previous-shortcut-destination-map shortcut-label shortcut-text destination-button error-label]
   {:pre [@last-shortcut-keystroke]}

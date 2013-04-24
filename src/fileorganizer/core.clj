@@ -154,7 +154,14 @@
   (reduce #(str %1 "\n" %2) (map action-as-string actions)))
 
 (defn commit-changes-action [e]
-  (-> (dialog :content (actions-as-string @actions) :option-type :ok-cancel) pack! show!))
+  (alert "hi"))
+
+(defn show-changes-action [e]
+  (-> (dialog :content (if-let [as (not-empty @actions)] (actions-as-string as) "NO CHANGES!") 
+              :option-type :ok-cancel 
+              :success-fn commit-changes-action) 
+    pack! 
+    show!))
 
 (config! f :content (vertical-panel :items [fc                                            
                                             (horizontal-panel :items [open-button delete-button])
@@ -162,6 +169,6 @@
                                             (separator)                                            
                                             destination-shortcuts
                                             (separator)
-                                            (button :text "Commit changes" :listen [:action commit-changes-action])]))
+                                            (button :text "Commit changes" :listen [:action show-changes-action])]))
 
 (-> f pack! show!)

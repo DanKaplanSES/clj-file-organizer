@@ -12,7 +12,9 @@
 (def shortcut-destination-map (atom {"Delete" "\"Reserved\""
                                      "Ctrl Z" "\"Reserved\""}))
 
-(def last-shortcut-keystroke (atom nil))
+(def last-shortcut-keystroke (atom nil))  ;todo: this may not need an atom
+
+(def actions (atom []))
 
 (defn file-chooser [] (JFileChooser.))    
 
@@ -28,19 +30,26 @@
 
 
 (def open-button (button :text "Open"))
+
 (listen open-button :action (fn [e] (when-let [f (.getSelectedFile fc)]
                                       (when (.isFile f)
                                         (open-file (.getSelectedFile fc))))))
 
 (def delete-button (button :text "Delete"))
+
 (defn delete-file-action []
   (when-let [selected-file (.getSelectedFile fc)]
-    (println "I would delete " selected-file)))
+    (swap! actions conj (list :delete selected-file))))
+    
+
 (listen delete-button :action (fn [e] (delete-file-action)))
 
 (defn undo-action []
-  (println "UNDOING"))
+  (when-not (empty? @actions) 
+    (swap! actions pop)))    
+
 (def undo-button (button :text "Undo"))
+
 (listen undo-button :action (fn [e] (undo-action)))
 
 
@@ -69,7 +78,7 @@
 (defn move-file-action [destination]
   {:pre [destination]}
   (when-let [selected-file (.getSelectedFile fc)]
-    (println "I would move " selected-file " to " destination )))
+    (swap! actions conj (list :move selected-file destination))))    
 
 (defn shortcut-ok-button-action [dialog fc previous-shortcut-destination-map shortcut-label shortcut-text destination-button error-label]
   {:pre [@last-shortcut-keystroke]}

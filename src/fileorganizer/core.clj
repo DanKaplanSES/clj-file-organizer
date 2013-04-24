@@ -47,9 +47,8 @@
 
 (defn delete-file-action []
   (when-let [selected-file (.getSelectedFile fc)]
-    (swap! actions conj (list :delete selected-file))
-    (refresh-fc)))
-    
+    (swap! actions conj [:delete selected-file])
+    (refresh-fc)))    
 
 (listen delete-button :action (fn [e] (delete-file-action)))
 
@@ -87,7 +86,7 @@
 (defn move-file-action [destination]
   {:pre [destination]}
   (when-let [selected-file (.getSelectedFile fc)]
-    (swap! actions conj (list :move selected-file destination))
+    (swap! actions conj [:move selected-file destination])
     (refresh-fc)))    
 
 (defn shortcut-ok-button-action [dialog fc previous-shortcut-destination-map shortcut-label shortcut-text destination-button error-label]
@@ -143,10 +142,26 @@
                                                 shortcuts 
                                                 :divider-location 2/3)]))
 
+(defmulti action-as-string (fn [action] (nth action 0)))
+
+(defmethod action-as-string :delete [[_ f]]
+  (str "Deleting: " (.getAbsolutePath f)))
+
+(defmethod action-as-string :move [[_ f d]]
+  (str "Moving: " (.getAbsolutePath f) " to " (.getAbsolutePath d)))
+
+(defn actions-as-string [actions]
+  (reduce #(str %1 "\n" %2) (map action-as-string actions)))
+
+(defn commit-changes-action [e]
+  (-> (dialog :content (actions-as-string @actions) :option-type :ok-cancel) pack! show!))
+
 (config! f :content (vertical-panel :items [fc                                            
                                             (horizontal-panel :items [open-button delete-button])
                                             undo-button
                                             (separator)                                            
-                                            destination-shortcuts]))
+                                            destination-shortcuts
+                                            (separator)
+                                            (button :text "Commit changes" :listen [:action commit-changes-action])]))
 
 (-> f pack! show!)

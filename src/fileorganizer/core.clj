@@ -2,9 +2,11 @@
   (:require [seesaw.core :refer :all])
   (:require [seesaw.chooser :refer :all])
   (:require [seesaw.keymap :refer [map-key]])
+  (:require [me.raynes.fs :refer [rename delete base-name]])
   (:import [javax.swing JFileChooser KeyStroke])
   (:import [java.awt.event KeyEvent])    
-  (:import [java.awt Desktop Component])   
+  (:import [java.awt Desktop Component])
+  (:import [java.io File])
   )
 
 (native!)
@@ -153,8 +155,17 @@
 (defn actions-as-string [actions]
   (reduce #(str %1 "\n" %2) (map action-as-string actions)))
 
-(defn commit-changes-action [e]
-  (alert "hi"))
+(defmulti run-action (fn [action] (nth action 0)))
+
+(defmethod run-action :delete [[_ f]]  
+  (delete f))
+
+(defmethod run-action :move [[_ f d]]  
+  (rename f (File. d (base-name f))))
+
+(defn commit-changes-action [e]  
+  (dorun (map run-action @actions))
+  (reset! actions []))
 
 (defn show-changes-action [e]
   (-> (dialog :content (if-let [as (not-empty @actions)] (actions-as-string as) "NO CHANGES!") 

@@ -3,11 +3,14 @@
   (:require [seesaw.chooser :refer :all])
   (:require [seesaw.keymap :refer [map-key]])
   (:require [me.raynes.fs :refer [rename delete base-name]])
+  (:require [fileorganizer.properties :refer [load-props]])
   (:import [javax.swing JFileChooser KeyStroke])
   (:import [java.awt.event KeyEvent])    
   (:import [java.awt Desktop Component])
   (:import [java.io File])
   )
+
+(def filechooser-props (load-props "filechooser.properties"))
 
 (native!)
 
@@ -18,7 +21,7 @@
 
 (def actions (atom []))
 
-(defn file-chooser [] (JFileChooser.))    
+(defn file-chooser [current-dir] (JFileChooser. current-dir))    
 
 (defn open-file [f]
   (.open (Desktop/getDesktop) f))
@@ -28,7 +31,7 @@
         sources (reduce conj #{} (map #(.getAbsolutePath (nth % 1)) @actions))]
     (not (sources input))))
 
-(def fc (doto (file-chooser)
+(def fc (doto (file-chooser (File. (:main.dir filechooser-props)))                   
           (.setAcceptAllFileFilterUsed false)
           (config! :filters [(file-filter "My Files" my-file-filter)])          
           (.setControlButtonsAreShown false)
@@ -91,8 +94,7 @@
     (swap! actions conj [:move selected-file destination])
     (refresh-fc)))    
 
-(defn shortcut-ok-button-action [dialog fc previous-shortcut-destination-map shortcut-label shortcut-text destination-button error-label]
-  {:pre [@last-shortcut-keystroke]}
+(defn shortcut-ok-button-action [dialog fc previous-shortcut-destination-map shortcut-label shortcut-text destination-button error-label]  
   (let [selected-file (.getSelectedFile fc)        
         shortcut-string (config shortcut-text :text)]
     (cond
@@ -109,7 +111,9 @@
 
 (defn destination-shortcut-dialog [destination-button shortcut-label]
   (let [d (custom-dialog :title "Choose a Shortcut" :modal? true :parent f)
-        fc (doto (file-chooser) (.setControlButtonsAreShown false) (config! :selection-mode :dirs-only))
+        fc (doto (file-chooser (File. (:shortcut.dir filechooser-props)))                         
+             (.setControlButtonsAreShown false) 
+             (config! :selection-mode :dirs-only))                    
         st (make-shortcut-text)
         shortcut-panel (horizontal-panel :items ["Shortcut:" st]) 
         error-label (label :foreground :red)

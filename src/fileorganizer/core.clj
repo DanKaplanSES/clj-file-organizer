@@ -35,12 +35,16 @@
           (.setAcceptAllFileFilterUsed false)
           (config! :filters [(file-filter "My Files" my-file-filter)])          
           (.setControlButtonsAreShown false)
-          (.setMultiSelectionEnabled true)          
+          (.setMultiSelectionEnabled true)                    
           (listen :action (fn [e] (when (= (.getActionCommand e) "ApproveSelection") 
-                                    (open-file (.getSelectedFile fc)))))
-          ))
+                                    (open-file (.getSelectedFile fc)))))))
 
-(defn refresh-fc [] (.rescanCurrentDirectory fc))
+
+(defn refresh-fc [] 
+  (doto fc 
+    (.rescanCurrentDirectory)
+    (.setSelectedFile nil)
+    (.setSelectedFiles nil)))
 
 (def open-button (button :text "Open"))
 
@@ -96,13 +100,13 @@
 
 (defn shortcut-ok-button-action [dialog fc previous-shortcut-destination-map shortcut-label shortcut-text destination-button error-label]  
   (let [selected-file (.getSelectedFile fc)        
-        shortcut-string (config shortcut-text :text)]
+        shortcut-string (config shortcut-text :text)]    
     (cond
       (not selected-file) (config! error-label :text "You must choose a directory")
       (empty? shortcut-string) (config! error-label :text "You must choose a shortcut")
       (get previous-shortcut-destination-map shortcut-string) (config! error-label :text (str "This shortcut is already bound to " (get previous-shortcut-destination-map shortcut-string)))
       :else (do              
-              (swap! shortcut-destination-map assoc shortcut-string (.getAbsolutePath selected-file))  
+              (reset! shortcut-destination-map (assoc previous-shortcut-destination-map shortcut-string (.getAbsolutePath selected-file)))              
               (config! shortcut-label :text shortcut-string)
               (config! destination-button :text (.getAbsolutePath selected-file))
               (dispose! dialog)

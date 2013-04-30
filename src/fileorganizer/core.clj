@@ -4,7 +4,7 @@
   (:require [seesaw.keymap :refer [map-key]])
   (:require [me.raynes.fs :refer [rename delete base-name]])
   (:require [fileorganizer.properties :refer [load-props]])
-  (:import [javax.swing JFileChooser KeyStroke])
+  (:import [javax.swing JFileChooser KeyStroke JComponent])
   (:import [java.awt.event KeyEvent])    
   (:import [java.awt Desktop Component])
   (:import [java.io File])
@@ -21,7 +21,29 @@
 
 (def actions (atom []))
 
-(defn file-chooser [current-dir] (JFileChooser. current-dir))    
+(defn clear-input-map [input-map key-stroke]
+  (when input-map   
+    (.remove input-map key-stroke)
+    (clear-input-map (.getParent input-map) key-stroke)))
+
+(defn for-each-component [f root]
+  (when root
+    (f root)
+    (dorun 
+      (map #(for-each-component f %)  (.getComponents root)))))
+
+(defn clear-input-map-of [component key-stroke]      
+  (for-each-component (fn [c] 
+                        (when (instance? javax.swing.JComponent c)
+                          (clear-input-map (.getInputMap c JComponent/WHEN_ANCESTOR_OF_FOCUSED_COMPONENT) key-stroke)
+                          (clear-input-map (.getInputMap c JComponent/WHEN_IN_FOCUSED_WINDOW) key-stroke)
+                          (clear-input-map (.getInputMap c JComponent/WHEN_FOCUSED) key-stroke))) component))
+
+
+(defn file-chooser [current-dir] 
+  (doto (JFileChooser. current-dir)
+    ;))
+    (.. getActionMap (get "viewTypeDetails") (actionPerformed nil))))
 
 (defn open-file [f]
   (.open (Desktop/getDesktop) f))
@@ -30,18 +52,6 @@
   (let [input (.getAbsolutePath f)
         sources (reduce conj #{} (map #(.getAbsolutePath (nth % 1)) @actions))]
     (not (sources input))))
-
-(defn clear-input-map [input-map key-stroke]
-  (when input-map
-    (.remove input-map key-stroke)
-    (clear-input-map (.getParent input-map) key-stroke)))
-
-(defn clear-input-map-of [component key-stroke]  
-  (when (instance? javax.swing.JComponent component)
-        (do
-          (clear-input-map (.getInputMap component) key-stroke)
-          (dorun 
-            (map #(clear-input-map-of % key-stroke) (.getComponents component))))))
 
 (def fc (doto (file-chooser (File. (:main.dir filechooser-props)))                   
           (.setAcceptAllFileFilterUsed false)

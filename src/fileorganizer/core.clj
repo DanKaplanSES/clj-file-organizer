@@ -31,14 +31,25 @@
         sources (reduce conj #{} (map #(.getAbsolutePath (nth % 1)) @actions))]
     (not (sources input))))
 
+(defn clear-input-map [input-map key-stroke]
+  (when input-map
+    (.remove input-map key-stroke)
+    (clear-input-map (.getParent input-map) key-stroke)))
+
+(defn clear-input-map-of [component key-stroke]  
+  (when (instance? javax.swing.JComponent component)
+        (do
+          (clear-input-map (.getInputMap component) key-stroke)
+          (dorun 
+            (map #(clear-input-map-of % key-stroke) (.getComponents component))))))
+
 (def fc (doto (file-chooser (File. (:main.dir filechooser-props)))                   
           (.setAcceptAllFileFilterUsed false)
           (config! :filters [(file-filter "My Files" my-file-filter)])          
           (.setControlButtonsAreShown false)
-          (.setMultiSelectionEnabled true)                    
+          (.setMultiSelectionEnabled true)            
           (listen :action (fn [e] (when (= (.getActionCommand e) "ApproveSelection") 
                                     (open-file (.getSelectedFile fc)))))))
-
 
 (defn refresh-fc [] 
   (doto fc 
@@ -108,9 +119,10 @@
       :else (do              
               (reset! shortcut-destination-map (assoc previous-shortcut-destination-map shortcut-string (.getAbsolutePath selected-file)))              
               (config! shortcut-label :text shortcut-string)
-              (config! destination-button :text (.getAbsolutePath selected-file))
+              (config! destination-button :text (.getAbsolutePath selected-file))              
               (dispose! dialog)
               (map-key f @last-shortcut-keystroke (fn [e] (move-file-action selected-file)) :scope :global)
+              (clear-input-map-of fc @last-shortcut-keystroke)
               (reset! last-shortcut-keystroke nil)))))
 
 (defn destination-shortcut-dialog [destination-button shortcut-label]

@@ -4,7 +4,7 @@
   (:require [seesaw.keymap :refer [map-key]])
   (:require [me.raynes.fs :refer [rename delete base-name]])
   (:require [fileorganizer.properties :refer [load-props]])
-  (:import [javax.swing JFileChooser KeyStroke JComponent])
+  (:import [javax.swing JFileChooser KeyStroke JComponent UIManager])
   (:import [java.awt.event KeyEvent])    
   (:import [java.awt Desktop Component])
   (:import [java.io File])
@@ -41,9 +41,11 @@
 
 
 (defn file-chooser [current-dir] 
-  (doto (JFileChooser. current-dir)
-    ;))
+  (UIManager/put "FileChooser.readOnly" true)
+  (doto (JFileChooser. current-dir)    
     (.. getActionMap (get "viewTypeDetails") (actionPerformed nil))))
+
+(def main-frame (frame :title "File Organizer"))
 
 (defn open-file [f]
   (.open (Desktop/getDesktop) f))
@@ -69,9 +71,12 @@
 
 (def open-button (button :text "Open"))
 
-(listen open-button :action (fn [e] (when-let [f (.getSelectedFile fc)]
-                                      (when (.isFile f)
-                                        (open-file (.getSelectedFile fc))))))
+(defn open-action [& e] 
+  (when-let [f (.getSelectedFile fc)]
+    (when (.isFile f)
+      (open-file (.getSelectedFile fc)))))
+
+(listen open-button :action open-action)
 
 (def delete-button (button :text "Delete"))
 
@@ -108,10 +113,9 @@
     :editable? false 
     :listen [:key-pressed #(shortcut-listener (.getSource %) %)]))
 
-(def f (frame :title "File Organizer"))
-
-(map-key f "DELETE" (fn [e] (delete-file-action)) :scope :global)
-(map-key f "ctrl Z" (fn [e] (undo-action)) :scope :global)
+(map-key main-frame "DELETE" (fn [e] (delete-file-action)) :scope :global)
+(map-key main-frame "ctrl Z" (fn [e] (undo-action)) :scope :global)
+(map-key main-frame "ENTER" (fn [e] (open-action)) :scope :global)
 
 (defn move-file-action [destination]
   {:pre [destination]}
@@ -131,12 +135,12 @@
               (config! shortcut-label :text shortcut-string)
               (config! destination-button :text (.getAbsolutePath selected-file))              
               (dispose! dialog)
-              (map-key f @last-shortcut-keystroke (fn [e] (move-file-action selected-file)) :scope :global)
+              (map-key main-frame @last-shortcut-keystroke (fn [e] (move-file-action selected-file)) :scope :global)
               (clear-input-map-of fc @last-shortcut-keystroke)
               (reset! last-shortcut-keystroke nil)))))
 
 (defn destination-shortcut-dialog [destination-button shortcut-label]
-  (let [d (custom-dialog :title "Choose a Shortcut" :modal? true :parent f)
+  (let [d (custom-dialog :title "Choose a Shortcut" :modal? true :parent main-frame)
         fc (doto (file-chooser (File. (:shortcut.dir filechooser-props)))                         
              (.setControlButtonsAreShown false) 
              (config! :selection-mode :dirs-only))                    
@@ -158,7 +162,7 @@
     (listen destination-button :action (fn [e] (destination-shortcut-dialog destination-button shortcut-label)))
     destination-button))                                       
 
-(def num-of-shortcuts 7)
+(def num-of-shortcuts 15)
 
 (def shortcut-items (map (fn [_] (label "<Unset>")) (range num-of-shortcuts)))
 
@@ -188,10 +192,12 @@
 (defmulti run-action (fn [action] (nth action 0)))
 
 (defmethod run-action :delete [[_ f]]  
-  (delete f))
+  (if-not (delete f)
+    (alert "Could not delete file " f)))
 
-(defmethod run-action :move [[_ f d]]  
-  (rename f (File. d (base-name f))))
+(defmethod run-action :move [[_ f d]]    
+  (if-not (rename f (File. d (base-name f)))
+    (alert "Could not move " f " to " d)))
 
 (defn commit-changes-action [e]  
   (dorun (map run-action @actions))
@@ -204,7 +210,7 @@
     pack! 
     show!))
 
-(config! f :content (vertical-panel :items [fc                                            
+(config! main-frame :content (vertical-panel :items [fc                                            
                                             (horizontal-panel :items [open-button delete-button])
                                             undo-button
                                             (separator)                                            
@@ -212,4 +218,4 @@
                                             (separator)
                                             (button :text "Commit changes" :listen [:action show-changes-action])]))
 
-(-> f pack! show!)
+(-> main-frame pack! show!)

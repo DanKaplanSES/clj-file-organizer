@@ -56,7 +56,8 @@
 
 (def fc (doto (file-chooser (File. (:main.dir filechooser-props)))                   
           (.setAcceptAllFileFilterUsed false)
-          (config! :filters [(file-filter "My Files" my-file-filter)])          
+          (config! :filters [(file-filter "All Files" my-file-filter)])    
+          (config! :selection-mode :files-and-dirs)
           (.setControlButtonsAreShown false)
           (.setMultiSelectionEnabled true)            
           (listen :action (fn [e] (when (= (.getActionCommand e) "ApproveSelection") 
@@ -140,9 +141,12 @@
               (dispose! dialog)
               (add-shortcut-and-destination (assoc previous-shortcut-destination-map shortcut-string (.getAbsolutePath selected-file)) shortcut-label shortcut-string destination-button (.getAbsolutePath selected-file))))))
 
-(defn destination-shortcut-dialog [destination-button shortcut-label]
+(defn destination-shortcut-dialog [destination-button shortcut-label]  
   (let [d (custom-dialog :title "Choose a Shortcut" :modal? true :parent main-frame)
-        fc (doto (file-chooser (File. (:shortcut.dir filechooser-props)))                         
+        previous-path (config destination-button :text)
+        fc (doto (file-chooser (File. (if (= "<Unset>" previous-path) 
+                                        (:shortcut.dir filechooser-props)
+                                        previous-path)))                         
              (.setControlButtonsAreShown false) 
              (config! :selection-mode :dirs-only))                    
         st (make-shortcut-text)
@@ -158,7 +162,6 @@
     (config! d :content (vertical-panel :items left-aligned-components))
     (-> d pack! show!)))	
                                        
-
 (def num-of-shortcuts 15)
 
 (def shortcut-items (map (fn [_] (label)) (range num-of-shortcuts)))

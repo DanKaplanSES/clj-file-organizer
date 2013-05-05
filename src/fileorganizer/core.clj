@@ -165,19 +165,19 @@
 
 (def shortcuts (grid-panel :columns 1 :items (conj shortcut-items "Shortcuts")))
 
+(defn configure-from-preferences [component pref-atom]
+  (config! component :text @pref-atom)
+  (listen component :property-change (fn [e] 
+                                       (when (= "text" (.getPropertyName e)) 
+                                         (reset! pref-atom (config component :text))))))
+
 (defn destination [my-index] 
   (let [destination-button (button)
         shortcut-label (nth shortcut-items my-index)
         shortcut-pref (preference-atom (str "shortcut-pref-" my-index) "<Unset>")
-        destination-pref (preference-atom (str "destination-pref-" my-index) "<Unset>")]    
-    (config! shortcut-label :text @shortcut-pref)
-    (listen shortcut-label :property-change (fn [e] 
-                                              (when (= "text" (.getPropertyName e)) 
-                                                (reset! shortcut-pref (config shortcut-label :text)))))
-    (config! destination-button :text @destination-pref)
-    (listen destination-button :property-change (fn [e] 
-                                                  (when (= "text" (.getPropertyName e)) 
-                                                    (reset! destination-pref (config destination-button :text)))))
+        destination-pref (preference-atom (str "destination-pref-" my-index) "<Unset>")]        
+    (configure-from-preferences shortcut-label shortcut-pref)
+    (configure-from-preferences destination-button destination-pref)    
     (listen destination-button :action (fn [e] (destination-shortcut-dialog destination-button shortcut-label)))    
     (add-shortcut-and-destination (assoc @shortcut-destination-map @shortcut-pref @destination-pref) shortcut-label @shortcut-pref destination-button @destination-pref)
     destination-button))

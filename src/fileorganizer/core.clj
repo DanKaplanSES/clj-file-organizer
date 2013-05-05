@@ -2,7 +2,7 @@
   (:require [seesaw.core :refer :all])
   (:require [seesaw.chooser :refer :all])
   (:require [seesaw.keymap :refer [map-key]])
-  (:require [me.raynes.fs :refer [rename delete base-name]])
+  (:require [me.raynes.fs :refer [rename delete base-name delete-dir]])
   (:require [fileorganizer.properties :refer [load-props]])
   (:require [seesaw.pref :refer [preferences-node preference-atom]])    
   (:import [javax.swing JFileChooser KeyStroke JComponent UIManager])
@@ -209,12 +209,13 @@
 (defmulti run-action (fn [action] (nth action 0)))
 
 (defmethod run-action :delete [[_ f]]  
-  (if-not (delete f)
-    (alert "Could not delete file " f)))
+  (cond
+    (.isDirectory f) (when-not (delete-dir f) (alert (str "Could not delete file " f)))
+    :else (delete f) (alert (str "Could not delete file " f))))  
 
 (defmethod run-action :move [[_ f d]]    
   (if-not (rename f (File. d (base-name f)))
-    (alert "Could not move " f " to " d)))
+    (alert (str "Could not move " f " to " d))))
 
 (defn commit-changes-action [e]  
   (dorun (map run-action @actions))

@@ -4,6 +4,7 @@
   (:require [seesaw.keymap :refer [map-key]])
   (:require [me.raynes.fs :refer [rename delete base-name]])
   (:require [fileorganizer.properties :refer [load-props]])
+  (:require [seesaw.pref :refer [preferences-node preference-atom]])    
   (:import [javax.swing JFileChooser KeyStroke JComponent UIManager])
   (:import [java.awt.event KeyEvent])    
   (:import [java.awt Desktop Component])
@@ -16,8 +17,6 @@
 
 (def shortcut-destination-map (atom {"Delete" "\"Reserved\""
                                      "Ctrl Z" "\"Reserved\""}))
-
-(def last-shortcut-keystroke (atom nil))  ;todo: this may not need an atom
 
 (def actions (atom []))
 
@@ -101,9 +100,8 @@
         code (.getKeyCode e)
         key-text (KeyEvent/getKeyText code)
         modifier-pressed (some identity (map #(= code %) [KeyEvent/VK_CONTROL KeyEvent/VK_ALT KeyEvent/VK_SHIFT]))]
-    (when-not modifier-pressed
-      (reset! last-shortcut-keystroke (KeyStroke/getKeyStrokeForEvent e))
-      (config! text :text (.trim (str modifier " " key-text))))))
+    (when-not modifier-pressed      
+      (config! text :text (str (KeyStroke/getKeyStrokeForEvent e))))))
     
 (defn left-align [c]
   (doto c (.setAlignmentX Component/LEFT_ALIGNMENT)))
@@ -130,14 +128,13 @@
       (not selected-file) (config! error-label :text "You must choose a directory")
       (empty? shortcut-string) (config! error-label :text "You must choose a shortcut")
       (get previous-shortcut-destination-map shortcut-string) (config! error-label :text (str "This shortcut is already bound to " (get previous-shortcut-destination-map shortcut-string)))
-      :else (do              
+      :else (do
+              (dispose! dialog)              
               (reset! shortcut-destination-map (assoc previous-shortcut-destination-map shortcut-string (.getAbsolutePath selected-file)))              
               (config! shortcut-label :text shortcut-string)
-              (config! destination-button :text (.getAbsolutePath selected-file))              
-              (dispose! dialog)
-              (map-key main-frame @last-shortcut-keystroke (fn [e] (move-file-action selected-file)) :scope :global)
-              (clear-input-map-of fc @last-shortcut-keystroke)
-              (reset! last-shortcut-keystroke nil)))))
+              (config! destination-button :text (.getAbsolutePath selected-file))                            
+              (map-key main-frame shortcut-string (fn [e] (move-file-action selected-file)) :scope :global)
+              (clear-input-map-of fc (KeyStroke/getKeyStroke shortcut-string))))))
 
 (defn destination-shortcut-dialog [destination-button shortcut-label]
   (let [d (custom-dialog :title "Choose a Shortcut" :modal? true :parent main-frame)
@@ -156,19 +153,23 @@
     
     (config! d :content (vertical-panel :items left-aligned-components))
     (-> d pack! show!)))	
-
-(defn destination [shortcut-label] 
-  (let [destination-button (button :text "<Unset>")]                                          
-    (listen destination-button :action (fn [e] (destination-shortcut-dialog destination-button shortcut-label)))
-    destination-button))                                       
+                                       
 
 (def num-of-shortcuts 15)
 
-(def shortcut-items (map (fn [_] (label "<Unset>")) (range num-of-shortcuts)))
+(def shortcut-items (map (fn [_] (label)) (range num-of-shortcuts)))
 
 (def shortcuts (grid-panel :columns 1 :items (conj shortcut-items "Shortcuts")))
 
-(def destination-items (map (fn [x] (destination (nth shortcut-items x))) (range num-of-shortcuts)))
+(defn destination [my-index] 
+  (let [destination-button (button)
+        shortcut-label (nth shortcut-items my-index)]
+    (config! shortcut-label :text "<Unset>")
+    (config! destination-button :text "<Unset>")
+    (listen destination-button :action (fn [e] (destination-shortcut-dialog destination-button shortcut-label)))
+    destination-button))
+
+(def destination-items (map (fn [x] (destination x)) (range num-of-shortcuts)))
 
 (def destinations (grid-panel :columns 1 :items (conj destination-items "Destinations")))
 

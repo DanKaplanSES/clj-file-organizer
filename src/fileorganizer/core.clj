@@ -121,6 +121,14 @@
     (swap! actions conj [:move selected-file destination])
     (refresh-fc)))    
 
+(defn add-shortcut-and-destination [new-shortcut-destination-map shortcut-label shortcut-string destination-button selected-path]
+  (when (not= "<Unset>" shortcut-string selected-path)
+    (reset! shortcut-destination-map new-shortcut-destination-map)              
+    (config! shortcut-label :text shortcut-string)
+    (config! destination-button :text selected-path)                            
+    (map-key main-frame shortcut-string (fn [e] (move-file-action (File. selected-path))) :scope :global)
+    (clear-input-map-of fc (KeyStroke/getKeyStroke shortcut-string))))
+
 (defn shortcut-ok-button-action [dialog fc previous-shortcut-destination-map shortcut-label shortcut-text destination-button error-label]  
   (let [selected-file (.getSelectedFile fc)        
         shortcut-string (config shortcut-text :text)]    
@@ -129,12 +137,8 @@
       (empty? shortcut-string) (config! error-label :text "You must choose a shortcut")
       (get previous-shortcut-destination-map shortcut-string) (config! error-label :text (str "This shortcut is already bound to " (get previous-shortcut-destination-map shortcut-string)))
       :else (do
-              (dispose! dialog)              
-              (reset! shortcut-destination-map (assoc previous-shortcut-destination-map shortcut-string (.getAbsolutePath selected-file)))              
-              (config! shortcut-label :text shortcut-string)
-              (config! destination-button :text (.getAbsolutePath selected-file))                            
-              (map-key main-frame shortcut-string (fn [e] (move-file-action selected-file)) :scope :global)
-              (clear-input-map-of fc (KeyStroke/getKeyStroke shortcut-string))))))
+              (dispose! dialog)
+              (add-shortcut-and-destination (assoc previous-shortcut-destination-map shortcut-string (.getAbsolutePath selected-file)) shortcut-label shortcut-string destination-button (.getAbsolutePath selected-file))))))
 
 (defn destination-shortcut-dialog [destination-button shortcut-label]
   (let [d (custom-dialog :title "Choose a Shortcut" :modal? true :parent main-frame)
@@ -163,10 +167,19 @@
 
 (defn destination [my-index] 
   (let [destination-button (button)
-        shortcut-label (nth shortcut-items my-index)]
-    (config! shortcut-label :text "<Unset>")
-    (config! destination-button :text "<Unset>")
-    (listen destination-button :action (fn [e] (destination-shortcut-dialog destination-button shortcut-label)))
+        shortcut-label (nth shortcut-items my-index)
+        shortcut-pref (preference-atom (str "shortcut-pref-" my-index) "<Unset>")
+        destination-pref (preference-atom (str "destination-pref-" my-index) "<Unset>")]    
+    (config! shortcut-label :text @shortcut-pref)
+    (listen shortcut-label :property-change (fn [e] 
+                                              (when (= "text" (.getPropertyName e)) 
+                                                (reset! shortcut-pref (config shortcut-label :text)))))
+    (config! destination-button :text @destination-pref)
+    (listen destination-button :property-change (fn [e] 
+                                                  (when (= "text" (.getPropertyName e)) 
+                                                    (reset! destination-pref (config destination-button :text)))))
+    (listen destination-button :action (fn [e] (destination-shortcut-dialog destination-button shortcut-label)))    
+    (add-shortcut-and-destination (assoc @shortcut-destination-map @shortcut-pref @destination-pref) shortcut-label @shortcut-pref destination-button @destination-pref)
     destination-button))
 
 (def destination-items (map (fn [x] (destination x)) (range num-of-shortcuts)))

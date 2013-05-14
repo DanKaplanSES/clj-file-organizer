@@ -11,8 +11,6 @@
   (:import [java.io File])
   )
 
-(def filechooser-props (load-props "filechooser.properties"))
-
 (native!)
 
 (def shortcut-destination-map (atom {"Delete" "\"Reserved\""
@@ -54,14 +52,19 @@
         sources (reduce conj #{} (map #(.getAbsolutePath (nth % 1)) @actions))]
     (not (sources input))))
 
-(def fc (doto (file-chooser (File. (:main.dir filechooser-props)))                   
-          (.setAcceptAllFileFilterUsed false)
-          (config! :filters [(file-filter "All Files" my-file-filter)])    
-          (config! :selection-mode :files-and-dirs)
-          (.setControlButtonsAreShown false)
-          (.setMultiSelectionEnabled true)            
-          (listen :action (fn [e] (when (= (.getActionCommand e) "ApproveSelection") 
-                                    (open-file (.getSelectedFile fc)))))))
+(let [start-dir (preference-atom "main-fc-start-dir")]
+  (def fc (doto (file-chooser @start-dir)                 
+            (.setAcceptAllFileFilterUsed false)
+            (config! :filters [(file-filter "All Files" my-file-filter)])    
+            (config! :selection-mode :files-and-dirs)
+            (.setControlButtonsAreShown false)
+            (.setMultiSelectionEnabled true)
+            (listen :property-change (fn [e] (when (= JFileChooser/DIRECTORY_CHANGED_PROPERTY (.getPropertyName e))                                                
+                                               (reset! start-dir (-> e
+                                                                   .getNewValue
+                                                                   .getAbsolutePath)))))
+            (listen :action (fn [e] (when (= (.getActionCommand e) "ApproveSelection") 
+                                      (open-file (.getSelectedFile fc))))))))
 
 (defn refresh-fc [] 
   (doto fc 
@@ -144,9 +147,9 @@
 (defn destination-shortcut-dialog [destination-button shortcut-label]  
   (let [d (custom-dialog :title "Choose a Shortcut" :modal? true :parent main-frame)
         previous-path (config destination-button :text)
-        fc (doto (file-chooser (File. (if (= "<Unset>" previous-path) 
-                                        (:shortcut.dir filechooser-props)
-                                        previous-path)))                         
+        fc (doto (file-chooser (if (= "<Unset>" previous-path) 
+                                        nil
+                                        (File. previous-path)))                         
              (.setControlButtonsAreShown false) 
              (config! :selection-mode :dirs-only))                    
         st (make-shortcut-text)
@@ -211,7 +214,7 @@
 (defmethod run-action :delete [[_ f]]  
   (cond
     (.isDirectory f) (when-not (delete-dir f) (alert (str "Could not delete file " f)))
-    :else (delete f) (alert (str "Could not delete file " f))))  
+    :else (when-not (delete f) (alert (str "Could not delete file " f)))))  
 
 (defmethod run-action :move [[_ f d]]    
   (if-not (rename f (File. d (base-name f)))

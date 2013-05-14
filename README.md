@@ -1,7 +1,7 @@
 clj-file-organizer
 ==================
 
-A simple file organizer written in Clojure.  This is a mockup of how it works:
+A simple file organizer written in Clojure.
 
 Why does this project exist?
 ============================

@@ -1,14 +1,15 @@
 (ns fileorganizer.core
+  (:require [fileorganizer.document-filter :refer [listen-doc-filter ignore-doc-filter set-document-filter]])
   (:require [seesaw.core :refer :all])
   (:require [seesaw.chooser :refer :all])
   (:require [seesaw.keymap :refer [map-key]])
-  (:require [me.raynes.fs :refer [rename delete base-name delete-dir]])
-  (:require [fileorganizer.properties :refer [load-props]])
+  (:require [me.raynes.fs :refer [rename delete base-name delete-dir]])  
   (:require [seesaw.pref :refer [preferences-node preference-atom]])    
   (:import [javax.swing JFileChooser KeyStroke JComponent UIManager])
+  (:import [javax.swing.text DocumentFilter])
   (:import [java.awt.event KeyEvent])    
   (:import [java.awt Desktop Component])
-  (:import [java.io File])
+  (:import [java.io File])  
   )
 
 (native!)
@@ -99,21 +100,26 @@
 
 (listen undo-button :action (fn [e] (undo-action)))
 
-(defn shortcut-listener [text e]
+(defn set-shortcut-text [text to]
+  (doto text  
+    (set-document-filter listen-doc-filter)
+    (config! :text to)
+    (set-document-filter ignore-doc-filter)))
+
+(defn shortcut-listener [text e]  
   (let [modifier (KeyEvent/getKeyModifiersText (.getModifiers e))        
         code (.getKeyCode e)
         key-text (KeyEvent/getKeyText code)
         modifier-pressed (some identity (map #(= code %) [KeyEvent/VK_CONTROL KeyEvent/VK_ALT KeyEvent/VK_SHIFT]))]
     (when-not modifier-pressed      
-      (config! text :text (str (KeyStroke/getKeyStrokeForEvent e))))))
+      (set-shortcut-text text (str (KeyStroke/getKeyStrokeForEvent e))))))
     
 (defn left-align [c]
   (doto c (.setAlignmentX Component/LEFT_ALIGNMENT)))
 
 (defn make-shortcut-text []
-  (text 
-    :editable? false 
-    :listen [:key-pressed #(shortcut-listener (.getSource %) %)]))
+  (doto (text :listen [:key-pressed #(shortcut-listener (.getSource %) %)])
+    (set-document-filter ignore-doc-filter)))
 
 (map-key main-frame "DELETE" (fn [e] (delete-file-action)) :scope :global)
 (map-key main-frame "ctrl Z" (fn [e] (undo-action)) :scope :global)
@@ -240,3 +246,5 @@
                                             (button :text "Commit changes" :listen [:action show-changes-action])]))
 
 (-> main-frame pack! show!)
+
+(defn -main [& args]) ;this doesn't do anything, loading the namespace does everything for us

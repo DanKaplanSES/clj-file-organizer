@@ -8,7 +8,7 @@ Why does this project exist?
 
 I built this because I couldn't find a program that made it easy to move a bunch of files into a bunch of different locations.  This was annoying to do in the Windows explorer so I decided to make a program to do it.
 
-Also, it was a good opportunity to learn clojure.
+Also, it was a good excuse to learn Clojure.
 
 How does it work?
 ==============

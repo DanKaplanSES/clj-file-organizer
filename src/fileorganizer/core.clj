@@ -1,6 +1,8 @@
 (ns fileorganizer.core
   (:require [fileorganizer.document-filter :refer [listen-doc-filter ignore-doc-filter set-document-filter]])
   (:require [seesaw.core :refer :all])
+  (:require [clojure.string :as string])
+  (:require [clojure.pprint :refer [pprint]])  
   (:require [seesaw.chooser :refer :all])
   (:require [seesaw.keymap :refer [map-key]])
   (:require [me.raynes.fs :refer [rename delete base-name delete-dir]])  
@@ -212,8 +214,31 @@
 (defmethod action-as-string :move [[_ f d]]
   (str "Moving: " (.getAbsolutePath f) " to " (.getAbsolutePath d)))
 
+(defn deletes-as-string [actions]
+  (let [deletes (filter (comp (partial = :delete) first) actions)]
+    (when-not (empty? deletes)
+      (str 
+        (->> deletes
+          (map second)
+          (cons "Deletes:")
+          (string/join "\n"))
+        "\n\n"))))
+
+(defn moves-as-string [actions]
+  (let [moves-by-destination (->> actions 
+                               (filter (comp (partial = :move) first))
+                               (group-by (comp first next next))) ;group by destination directory
+        moves-by-destination (for [[key val] moves-by-destination] [(.getName key) (map #(-> % second .getName) val)])
+        moves-by-destination (for [[key val] moves-by-destination] (str "Moved to " key ":\n    " (string/join "\n    " val)))
+        ]                               
+    (string/join "\n\n" moves-by-destination)))
+
 (defn actions-as-string [actions]
-  (reduce #(str %1 "\n" %2) (map action-as-string actions)))
+  (str     
+    (deletes-as-string actions)
+    (moves-as-string actions)    
+  ))
+    
 
 (defmulti run-action (fn [action] (nth action 0)))
 

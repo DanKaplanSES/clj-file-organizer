@@ -256,7 +256,7 @@
   (reset! actions []))
 
 (defn show-changes-action [e]
-  (-> (dialog :content (if-let [as (not-empty @actions)] (actions-as-string as) "NO CHANGES!") 
+  (-> (dialog :content (if-let [as (not-empty @actions)] (text :multi-line? true :text (actions-as-string as)) "NO CHANGES!") 
               :option-type :ok-cancel 
               :success-fn commit-changes-action) 
     pack! 

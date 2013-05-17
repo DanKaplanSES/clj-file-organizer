@@ -219,7 +219,7 @@
     (when-not (empty? deletes)
       (str 
         (->> deletes
-          (map second)
+          (map #(-> % second .getName))
           (cons "Deletes:")
           (string/join "\n"))
         "\n\n"))))
